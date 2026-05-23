@@ -23,8 +23,11 @@ AxiosInstance.interceptors.response.use(
         return response;
     },
     (error) => {
-        if (error.response.status !== 422) {
-            console.error("Unexpected response error: ", error);
+        const status = error.response?.status;
+        const data = error.response?.data;
+
+        if (status !== 422) {
+            console.error("Unexpected response error:", { status, data });
         }
 
         return Promise.reject(error);
@@ -32,3 +35,4 @@ AxiosInstance.interceptors.response.use(
 );
 
 export default AxiosInstance;
+

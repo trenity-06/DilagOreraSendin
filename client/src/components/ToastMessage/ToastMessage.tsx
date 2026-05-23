@@ -36,23 +36,33 @@ const ToastMessage: FC<ToastMessageProps> = ({
                     `}
                 >
                     {isFailed ? (
-                        <>
-                            <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6" /></svg>
-                            <span className="sr-only">Error icon</span>
-                        </>
+                        <svg
+                            className="w-5 h-5"
+                            aria-hidden="true"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                        >
+                            <path
+                                fillRule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-7a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
                     ) : (
-                        <>
-                            <svg
-                                className="w-5 h-5"
-                                aria-hidden="true"
-                                xmlns="https://www.w3.org/2000/svg"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                            >
-                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
-                            </svg>
-                            <span className="sr-only">Check icon</span>
-                        </>
+                        <svg
+                            className="w-5 h-5"
+                            aria-hidden="true"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                        >
+                            <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.172 7.707 8.879A1 1 0 006.293 10.293l3 3a1 1 0 001.414 0l3-3z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
                     )}
                 </div>
                 <div className="ms-3 text-sm font-normal">{message}</div>

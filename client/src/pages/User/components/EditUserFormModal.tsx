@@ -131,12 +131,6 @@ const EditUserFormModal: FC<EditUserFormModalProps> = ({
     }
   }, [isOpen])
 
-  useEffect(() => {
-  if (!isOpen) return;
-
-  handleLoadGenders();
-}, [isOpen]);
-
 useEffect(() => {
   if (!isOpen || !user) return;
 

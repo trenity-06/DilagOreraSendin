@@ -134,7 +134,7 @@ const AddUserFormModal: FC<AddUserFormModalProps> = ({
               errors={errors.add_user_profile_picture}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4 border-b norder-gray-100 mb-4">
+          <div className="grid grid-cols-2 gap-4 border-b border-gray-100 mb-4">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4">
                 <FloatingLabelInput

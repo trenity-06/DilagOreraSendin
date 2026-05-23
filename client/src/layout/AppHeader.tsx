@@ -36,14 +36,14 @@ const AppHeader = () => {
     const handleUserFullNameFormat = () => {
         if (!user) return "";
 
-        let fullName = `${user.user.last_name}, ${user.user.first_name}`;
+        let fullName = `${user.last_name}, ${user.first_name}`;
 
-        if (user.user.middle_name) {
-            fullName += ` ${user.user.middle_name.charAt(0)}`;
+        if (user.middle_name) {
+            fullName += ` ${user.middle_name.charAt(0)}`;
         }
 
-        if (user.user.suffix_name) {
-            fullName += ` ${user.user.suffix_name}`;
+        if (user.suffix_name) {
+            fullName += ` ${user.suffix_name}`;
         }
 
         return fullName;
@@ -70,7 +70,7 @@ const AppHeader = () => {
                                 aria-controls="top-bar-sidebar"
                                 type="button"
                                 onClick={toggleSidebar}
-                                className="infline-flex items-center p-2 text-sm text-gray-500 rounded-lg sm:hidden    hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
+                                className="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg sm:hidden    hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
                                 <span className="sr-only">Open sidebar</span>
                                 <svg className="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                     <path stroke="currentColor" strokeLinecap="round" strokeWidth="2" d="M5 7h14M5 12h14M5 17h10" />

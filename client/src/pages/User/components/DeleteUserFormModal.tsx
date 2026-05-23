@@ -4,27 +4,6 @@ import Modal from "../../../components/Modal";
 import SubmitButton from "../../../components/Button/SubmitButton";
 import CloseButton from "../../../components/Button/CloseButton";
 import UserService from "../../../services/UserService";
-import AppSidebar from "../../../layout/AppSidebar";
-import { Outlet } from "react-router-dom";
-import AppHeader from "../../../layout/AppHeader";
-
-export const LayoutContent = () => {
-    return (
-     <>
-        <div>
-            <AppSidebar />
-        </div>
-        <div>
-        <AppHeader />
-        </div>
-        <div className ="pt-20 pl-0 sm:pl-64 min-h-screen:">
-            <div className="p-4 sm:p-6">
-                <Outlet />
-            </div>
-        </div>
-     </> 
-    );
-};
 
 interface DeleteUserFormModalProps {
     user: userColumns | null;
@@ -62,10 +41,8 @@ const DeleteUserFormModal: FC<DeleteUserFormModalProps> = ({
                 onUserDeleted(res.data.message)
                 refreshKey()
                 onClose()
-            } else 
+            } else {
                 console.error('Unexpected status error occured during deleting user: ', res.status)
-            {
-
             }
         } catch(error) {
             console.error('Unexpected server error occured during deleting users: ',error)

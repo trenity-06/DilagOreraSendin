@@ -34,16 +34,17 @@ class DatabaseSeeder extends Seeder
 
         User::factory()->create([
             'first_name' => 'John',
-            'middle_name' => 'Santos',
+            'middle_name' => 'B',
             'last_name' => 'Doe',
             'suffix_name' => null,
-            'gender_id' => Gender::inRandomOrder()->first()->gender_id,
+            'gender_id' => Gender::where('gender', 'Male')->first()?->gender_id ?? Gender::inRandomOrder()->first()->gender_id,
             'birth_date' => $birthDate,
-            'age' => $age,
+            'age' => 67,
             'username' => 'johndoe',
             'password' => 'johndoe'
         ]);
 
         User::factory(100)->create();
+
     }
 }

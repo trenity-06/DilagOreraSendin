@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
-import type { userColumns } from "../interfaces/UserColumns";
+import type { userColumns } from "../interfaces/UserInterface";
 
 export const useModal = (initialState: boolean = false) => {
   const [isOpen, setIsOpen] = useState(initialState);
   const [selectedUser, setSelectedUser] = useState<userColumns | null>(null);
+
 
   const openModal = useCallback((user?: userColumns | null) => {
     setSelectedUser(user || null);

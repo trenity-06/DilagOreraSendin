@@ -105,7 +105,7 @@ const EditGenderForm: FC<EditGenderFormProps> = ({ onGenderUpdated }) => {
                             </BackButton>
                         )}
                         <SubmitButton
-                            label="Udpate Gender"
+                            label="Update Gender"
                             loading={loadingUpdate}
                             loadingLabel="Updating Gender..."
                         >

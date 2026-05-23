@@ -6,6 +6,18 @@ const AppSidebar = () => {
 
     const sidebarItems = [
         {
+            path: '/dashboard',
+            text: 'Dashboard',
+        },
+        {
+            path: '/inventory',
+            text: 'Inventory',
+        },
+        {
+            path: '/pos',
+            text: 'POS',
+        },
+        {
             path: '/genders',
             text: 'Genders',
 
