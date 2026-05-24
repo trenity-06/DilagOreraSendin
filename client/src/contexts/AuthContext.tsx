@@ -24,13 +24,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserDetails | null>(null)
     const [loading, setLoading] = useState(true)
 
+    const normalizeUser = (payload: any) => payload?.user ?? payload
+
     const login = async (username: string, password: string) => {
         try {
             const res = await AuthService.login({ username, password })
 
             if (res.status === 200) {
                 localStorage.setItem('token', res.data.token);
-                setUser(res.data)
+                setUser(normalizeUser(res.data))
             } else {
                 console.error('Unexpected status error occurred during logging user in: ', res.status)
             }
@@ -49,7 +51,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         try {
             const res = await AuthService.me();
             if (res.status === 200) {
-                setUser(res.data);
+                setUser(normalizeUser(res.data));
             }
         } catch (error) {
             console.error('Error refreshing user data: ', error);
@@ -66,7 +68,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 const res = await AuthService.me();
 
                 if (res.status === 200) {
-                    setUser(res.data);
+                    setUser(normalizeUser(res.data));
                 } else {
                     localStorage.removeItem("token");
                     setUser(null);

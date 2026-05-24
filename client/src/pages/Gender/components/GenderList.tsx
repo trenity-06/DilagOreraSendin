@@ -47,7 +47,7 @@ const GenderList: FC<GenderListProps> = ({ refreshKey }) => {
             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                 <div className="max-w-full max-h-[calc(100vh)] overflow-x-auto">
                     <Table>
-                        <TableHeader className="border-b border-gray-200 bg-blue-600 sticky top-0 text-white text-xs">
+                        <TableHeader className="border-b border-gray-200 bg-emerald-600 sticky top-0 text-white text-xs">
                             <TableRow>
                                 <TableCell isHeader className="px-5 py-3 font-medium text-center">
                                     No.

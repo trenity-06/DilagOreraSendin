@@ -126,7 +126,7 @@ const UserList: React.FC<UserListProps> = ({ onAddUser, onEditUser, onDeleteUser
                                         autoFocus
                                     />
                                 </div>
-                                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                                <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-emerald-700 transition-colors cursor-pointer"
                                     onClick={onAddUser}
                                 >
                                     Add User
@@ -134,7 +134,7 @@ const UserList: React.FC<UserListProps> = ({ onAddUser, onEditUser, onDeleteUser
                             </div>
                         </div>
                     </caption>
-                    <TableHeader className="border-b border-gray-200 bg-blue-600 sticky top-0 text-white text-xs z-10">
+                    <TableHeader className="border-b border-gray-200 bg-emerald-600 sticky top-0 text-white text-xs z-10">
                         <TableRow>
                             <TableCell isHeader className="px-5 py-3 font-medium text-center">
                                 No.
