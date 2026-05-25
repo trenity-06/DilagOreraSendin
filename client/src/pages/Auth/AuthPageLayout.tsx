@@ -30,10 +30,10 @@ const AuthPageLayout: FC<AuthPageLayoutProps> = ({ children }) => {
 
                     <div className="max-w-xl">
                         <h2 className="text-6xl font-bold leading-tight mb-6">
-                            Smart Inventory Management for Erscanuela Sari-Sari Store
+                            Smart Inventory Management for Nene's Store
                         </h2>
                         <p className="text-lg text-green-100 leading-relaxed mb-10">
-                            Track products, monitor sales, manage stock, and simplify daily store operations with a modern inventory management system.
+                            Track products, monitor sales, manage stock with a modern inventory management system.
                         </p>
                     </div>
 

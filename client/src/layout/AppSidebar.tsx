@@ -46,7 +46,7 @@ const AppSidebar = () => {
                             src="https://flowbite.com/docs/images/logo.svg"
                             className="h-6 me-3" alt="Flowbite Logo" />
                         <span
-                            className="self-center text-lg font-semibold whitespace-nowrap text-[#0f172a]">Erscanuela Store</span>
+                            className="self-center text-lg font-semibold whitespace-nowrap text-[#0f172a]">Nene's Store</span>
                     </a>
                     <ul className="space-y-2 font-medium">
                         {sidebarItems.map((sidebarItem, index) => (

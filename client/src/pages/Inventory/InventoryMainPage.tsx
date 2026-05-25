@@ -409,6 +409,10 @@ const InventoryMainPage = () => {
                 <option>Electronics</option>
                 <option>Hardware</option>
                 <option>Supplies</option>
+                <option>Essentials</option>
+                <option>Snacks</option>
+                <option>Beverages</option>
+                <option>Frozen Foods</option>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
