@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useSidebar } from "../contexts/SidebarContext";
+import GroupLogo from "../assets/img/GroupLogo.png";
 
 const AppSidebar = () => {
     const { isOpen, toggleSidebar } = useSidebar();
@@ -40,11 +41,11 @@ const AppSidebar = () => {
                 <div
                    className="h-full px-3 py-4 overflow-y-auto bg-linear-to-br from-green-900 via-green-800 to-green-950 text-[#0f172a] border-r border-white/40 shadow-[0_0_30px_rgba(16,24,40,0.08)]">
                     <a
-                        href="https://flowbite.com/"
+                        href="/dashboard"
                         className="flex items-center ps-2.5 mb-5">
                         <img
-                            src="https://flowbite.com/docs/images/logo.svg"
-                            className="h-6 me-3" alt="Flowbite Logo" />
+                            src={GroupLogo}
+                            className="h-6 me-3" alt="Group Logo" />
                         <span
                             className="self-center text-lg font-semibold whitespace-nowrap text-[#0f172a]">Nene's Store</span>
                     </a>
