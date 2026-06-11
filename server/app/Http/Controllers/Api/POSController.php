@@ -102,17 +102,44 @@ class POSController extends Controller
                 'sold_at',
             ]);
 
+        $saleIds = $sales->pluck('sale_id')->all();
+
+        // Fetch OUT transactions and group them by sale.
+        // NOTE: your tbl_inventory_transactions schema does NOT include sale_id (DB error was raised).
+        // So we can only show item breakdown + items_count per sale if we can reliably map
+        // transactions to a sale_id.
+        //
+        // In the current DB, we don't have that mapping, so we return empty line items.
+        $lineItemsBySaleId = collect();
+
+
         return response()->json([
             'message' => 'POS sales fetched successfully.',
-            'data' => $sales->map(function ($s) {
+            'data' => $sales->map(function ($s) use ($lineItemsBySaleId) {
+                $txs = $lineItemsBySaleId->get($s->sale_id, collect());
+
+                $itemsCount = (int) $txs->sum('quantity');
+
+                $lineItems = $txs->map(function ($t) {
+                    return [
+                        'item_name' => $t->item_name,
+                        'quantity' => (int) $t->quantity,
+                        'unit_price' => $t->unit_price !== null ? (float) $t->unit_price : null,
+                        'line_total' => $t->total_price !== null ? (float) $t->total_price : null,
+                    ];
+                })->values();
+
                 return [
                     'sale_id' => $s->sale_id,
                     'customer_name' => $s->customer_name,
                     'total_amount' => (float) $s->total_amount,
                     'sold_at' => $s->sold_at,
+                    'items_count' => $itemsCount,
+                    'line_items' => $lineItems,
                 ];
             }),
         ], 200);
     }
+
 }
 

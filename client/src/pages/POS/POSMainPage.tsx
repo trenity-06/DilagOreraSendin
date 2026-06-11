@@ -62,9 +62,10 @@ const POSMainPage = () => {
 
       const json = await res.json();
       const data = json?.data;
+      // IMPORTANT: preserve existing sales in case of empty array during transition.
       setSales(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+      console.error("fetchSalesFromDB error:", e);
       setSales([]);
     } finally {
       setIsLoadingSales(false);
@@ -327,17 +328,33 @@ const POSMainPage = () => {
               <tr className="text-left text-slate-500">
                 <th className="px-3 py-2">Customer</th>
                 <th className="px-3 py-2">Total</th>
+                <th className="px-3 py-2">Items</th>
                 <th className="px-3 py-2">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {sales.map((sale) => (
-                <tr key={sale.sale_id} className="text-slate-700">
+                <tr key={sale.sale_id} className="text-slate-700 align-top">
                   <td className="px-3 py-3 font-semibold">{sale.customer_name || "Walk-in"}</td>
-                  <td className="px-3 py-3">{currencyFormatter.format(sale.total_amount)}</td>
+                  <td className="px-3 py-3">
+                    <div>{currencyFormatter.format(sale.total_amount)}</div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="font-semibold">{sale.items_count ?? 0} items</div>
+                    {sale.line_items?.length ? (
+                      <div className="mt-1 text-xs text-slate-600">
+                        {sale.line_items.map((li, idx) => (
+                          <div key={`${sale.sale_id}-${li.item_name}-${idx}`}>• {li.item_name} x{li.quantity}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-1 text-xs text-slate-500">No items</div>
+                    )}
+                  </td>
                   <td className="px-3 py-3">{sale.sold_at ? new Date(sale.sold_at).toLocaleString() : ""}</td>
                 </tr>
               ))}
+
 
               {!isLoadingSales && sales.length === 0 ? (
                 <tr>

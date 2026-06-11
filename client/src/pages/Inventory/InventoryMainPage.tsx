@@ -442,7 +442,6 @@ const InventoryMainPage = () => {
               >
                 <option>Electronics</option>
                 <option>Hardware</option>
-                <option>Supplies</option>
                 <option>Essentials</option>
                 <option>Snacks</option>
                 <option>Beverages</option>

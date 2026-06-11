@@ -32,6 +32,13 @@ export interface PosSale {
   proofOfSale?: PosProofOfSale[];
 }
 
+export interface PosSaleApiLineItemSummary {
+  item_name: string;
+  quantity: number;
+  unit_price?: number;
+  line_total?: number;
+}
+
 export interface PosSaleApiResponse {
   sale_id: number;
   created_by?: number;
@@ -41,7 +48,12 @@ export interface PosSaleApiResponse {
   is_deleted: boolean;
   created_at?: string;
   updated_at?: string;
+
+  // POS listSales enrichment
+  items_count?: number;
+  line_items?: PosSaleApiLineItemSummary[];
 }
+
 
 export interface PosProofOfSaleApiResponse {
   proof_id: number;
