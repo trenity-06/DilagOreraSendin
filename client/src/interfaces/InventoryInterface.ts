@@ -11,6 +11,7 @@ export interface InventoryItem {
   status: InventoryStatus;
   supplier: string;
   lastUpdated: string;
+  image?: string | null;
 }
 
 export interface InventoryFormValues {
@@ -21,6 +22,7 @@ export interface InventoryFormValues {
   unitCost: string;
   unitPrice: string;
   supplier: string;
+  image: string;
 }
 
 export interface InventoryTransaction {

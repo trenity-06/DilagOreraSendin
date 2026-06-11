@@ -10,9 +10,20 @@ use Illuminate\Support\Facades\Auth;
 class AuthController extends Controller
 {
     public function login(Request $request) {
+        $payload = $request->all();
+
+        if (empty($payload) && $request->getContent()) {
+            $decodedPayload = json_decode($request->getContent(), true);
+
+            if (is_array($decodedPayload)) {
+                $request->merge($decodedPayload);
+                $payload = $decodedPayload;
+            }
+        }
+
         $validated = $request->validate([
-            'username' => ['required', 'min:6', 'max:12'],
-            'password' => ['required', 'min:6', 'max:12']
+            'username' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string'],
         ]);
 
         $user = User::with(['gender'])
@@ -27,8 +38,8 @@ class AuthController extends Controller
     }
 
     // Works with BOTH hashed passwords and raw seeded passwords.
-    // (Your User model currently casts password as 'hashed', which can interfere with direct compare.)
-    $storedPassword = $user->getRawOriginal('password') ?? $user->password;
+    // Use raw DB value to avoid any casting issues.
+    $storedPassword = (string) $user->getRawOriginal('password');
 
     $passwordMatches = false;
 

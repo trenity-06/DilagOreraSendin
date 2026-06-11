@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import type { InventoryFormValues, InventoryItem } from "../../interfaces/InventoryInterface";
+import InventoryService from "../../services/InventoryService";
 
 const INVENTORY_STORAGE_KEY = "inventory-items";
 
@@ -11,76 +12,26 @@ const defaultFormValues: InventoryFormValues = {
   unitCost: "15",
   unitPrice: "24",
   supplier: "North Star Supply",
+  image: "",
 };
 
-const initialItems: InventoryItem[] = [
-  {
-    id: 1,
-    name: "Barcode Scanner",
-    category: "Electronics",
-    quantity: 24,
-    reorderPoint: 8,
-    unitCost: 18,
-    unitPrice: 35,
-    status: "In stock",
-    supplier: "North Star Supply",
-    lastUpdated: "2026-05-20T09:00:00.000Z",
-  },
-  {
-    id: 2,
-    name: "Receipt Printer",
-    category: "Hardware",
-    quantity: 3,
-    reorderPoint: 5,
-    unitCost: 70,
-    unitPrice: 120,
-    status: "Low stock",
-    supplier: "Precision Parts",
-    lastUpdated: "2026-05-21T10:30:00.000Z",
-  },
-  {
-    id: 3,
-    name: "POS Terminal",
-    category: "Electronics",
-    quantity: 0,
-    reorderPoint: 2,
-    unitCost: 190,
-    unitPrice: 280,
-    status: "Out of stock",
-    supplier: "Apex Devices",
-    lastUpdated: "2026-05-22T11:45:00.000Z",
-  },
-  {
-    id: 4,
-    name: "Thermal Paper",
-    category: "Supplies",
-    quantity: 42,
-    reorderPoint: 12,
-    unitCost: 4,
-    unitPrice: 8,
-    status: "In stock",
-    supplier: "Office Hub",
-    lastUpdated: "2026-05-23T13:20:00.000Z",
-  },
-];
-
-const loadInventoryItems = () => {
+const loadInitialItems = () => {
   if (typeof window === "undefined") {
-    return initialItems;
+    return [] as InventoryItem[];
   }
 
   try {
     const storedItems = window.localStorage.getItem(INVENTORY_STORAGE_KEY);
 
     if (!storedItems) {
-      return initialItems;
+      return [] as InventoryItem[];
     }
 
     const parsedItems = JSON.parse(storedItems);
 
-    return Array.isArray(parsedItems) ? parsedItems : initialItems;
+    return Array.isArray(parsedItems) ? parsedItems : [];
   } catch {
-    return initialItems;
+    return [] as InventoryItem[];
   }
 };
 
@@ -106,7 +57,7 @@ const getStatus = (
 };
 
 const InventoryMainPage = () => {
-  const [items, setItems] = useState<InventoryItem[]>(() => loadInventoryItems());
+  const [items, setItems] = useState<InventoryItem[]>(() => loadInitialItems());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -115,6 +66,31 @@ const InventoryMainPage = () => {
 
   useEffect(() => {
     document.title = "Inventory";
+  }, []);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const serverItems = await InventoryService.loadItems();
+        setItems(serverItems);
+      } catch {
+        if (typeof window !== "undefined") {
+          const storedItems = window.localStorage.getItem(INVENTORY_STORAGE_KEY);
+          if (storedItems) {
+            try {
+              const parsedItems = JSON.parse(storedItems);
+              if (Array.isArray(parsedItems)) {
+                setItems(parsedItems);
+              }
+            } catch {
+              setItems([]);
+            }
+          }
+        }
+      }
+    };
+
+    void loadItems();
   }, []);
 
   useEffect(() => {
@@ -181,10 +157,39 @@ const InventoryMainPage = () => {
       unitCost: String(item.unitCost),
       unitPrice: String(item.unitPrice),
       supplier: item.supplier,
+      image: item.image ?? "",
     });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+
+      setFormValues((current) => ({
+        ...current,
+        image: result,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setFormValues((current) => ({
+      ...current,
+      image: "",
+    }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsedValues = {
@@ -194,37 +199,48 @@ const InventoryMainPage = () => {
       unitPrice: Number(formValues.unitPrice),
     };
 
-    const nextItem: InventoryItem = {
-      id: editingItemId ?? Date.now(),
+    const payload = {
       name: formValues.name,
       category: formValues.category,
       quantity: parsedValues.quantity,
-      reorderPoint: parsedValues.reorderPoint,
-      unitCost: parsedValues.unitCost,
-      unitPrice: parsedValues.unitPrice,
-      status: getStatus(parsedValues.quantity, parsedValues.reorderPoint),
+      reorder_point: parsedValues.reorderPoint,
+      unit_cost: parsedValues.unitCost,
+      unit_price: parsedValues.unitPrice,
       supplier: formValues.supplier,
-      lastUpdated: new Date().toISOString(),
+      image: formValues.image || null,
     };
 
-    setItems((current) => {
-      if (editingItemId) {
-        return current.map((item) =>
-          item.id === editingItemId ? nextItem : item
-        );
-      }
+    try {
+      const savedItem = editingItemId
+        ? await InventoryService.updateItem(editingItemId, payload)
+        : await InventoryService.createItem(payload);
 
-      return [nextItem, ...current];
-    });
+      setItems((current) => {
+        if (editingItemId) {
+          return current.map((item) =>
+            item.id === editingItemId ? savedItem : item
+          );
+        }
 
-    resetForm();
+        return [savedItem, ...current];
+      });
+
+      resetForm();
+    } catch (error) {
+      console.error("Failed to save inventory item", error);
+    }
   };
 
-  const handleDelete = (itemId: number) => {
-    setItems((current) => current.filter((item) => item.id !== itemId));
+  const handleDelete = async (itemId: number) => {
+    try {
+      await InventoryService.deleteItem(itemId);
+      setItems((current) => current.filter((item) => item.id !== itemId));
 
-    if (editingItemId === itemId) {
-      resetForm();
+      if (editingItemId === itemId) {
+        resetForm();
+      }
+    } catch (error) {
+      console.error("Failed to delete inventory item", error);
     }
   };
 
@@ -330,7 +346,25 @@ const InventoryMainPage = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredItems.map((item) => (
                   <tr key={item.id} className="text-slate-700">
-                    <td className="px-3 py-3 font-semibold">{item.name}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-3">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="h-10 w-10 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">
+                            IMG
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold">{item.name}</div>
+                          <div className="text-xs text-slate-500">{item.category}</div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-3 py-3">{item.category}</td>
                     <td className="px-3 py-3">{item.quantity}</td>
                     <td className="px-3 py-3">{item.reorderPoint}</td>
@@ -481,6 +515,37 @@ const InventoryMainPage = () => {
                 onChange={handleChange}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Item image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400"
+              />
+              {formValues.image ? (
+                <div className="mt-2 space-y-2">
+                  <img
+                    src={formValues.image}
+                    alt={formValues.name || "Item preview"}
+                    className="h-28 w-full rounded-xl object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="text-sm font-semibold text-rose-600"
+                  >
+                    Remove image
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">
+                  No image selected yet. You can add one when creating or editing an item.
+                </p>
+              )}
             </div>
             <button
               type="submit"

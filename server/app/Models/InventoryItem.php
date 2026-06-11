@@ -16,8 +16,11 @@ class InventoryItem extends Model
         'sku',
         'unit',
         'current_stock',
+        'reorder_point',
         'purchase_cost',
         'sell_price',
+        'supplier',
+        'image',
         'is_deleted',
     ];
 

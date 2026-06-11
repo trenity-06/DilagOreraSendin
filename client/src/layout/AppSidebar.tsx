@@ -20,12 +20,12 @@ const AppSidebar = () => {
         },
         {
             path: '/genders',
-            text: 'Genders',
+            text: '',
 
         },
         {
             path: '/users',
-            text: 'Users',
+            text: '',
         }
     ]
     return (

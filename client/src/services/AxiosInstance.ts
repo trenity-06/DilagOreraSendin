@@ -9,6 +9,8 @@ AxiosInstance.interceptors.request.use((config) => {
         config.headers["Authorization"] = `Bearer ${token}`;
     }
 
+    config.headers["Accept"] = "application/json";
+
     if (config.data instanceof FormData) {
         config.headers["Content-Type"] = "multipart/form-data";
     } else {

@@ -5,6 +5,7 @@ import ToastMessage from "../../components/ToastMessage/ToastMessage";
 import { useToastMessage } from "../../hooks/useToastMessage";
 import type { InventoryFormValues, InventoryItem } from "../../interfaces/InventoryInterface";
 import type { PosSaleRecord } from "../../interfaces/PosInterface";
+import InventoryService from "../../services/InventoryService";
 
 const INVENTORY_STORAGE_KEY = "inventory-items";
 const SALES_STORAGE_KEY = "pos-sales";
@@ -17,58 +18,8 @@ const defaultFormValues: InventoryFormValues = {
   unitCost: "15",
   unitPrice: "24",
   supplier: "North Star Supply",
+  image: "",
 };
-
-const initialItems: InventoryItem[] = [
-  {
-    id: 1,
-    name: "Barcode Scanner",
-    category: "Electronics",
-    quantity: 24,
-    reorderPoint: 8,
-    unitCost: 18,
-    unitPrice: 35,
-    status: "In stock",
-    supplier: "North Star Supply",
-    lastUpdated: "2026-05-20T09:00:00.000Z",
-  },
-  {
-    id: 2,
-    name: "Receipt Printer",
-    category: "Hardware",
-    quantity: 3,
-    reorderPoint: 5,
-    unitCost: 70,
-    unitPrice: 120,
-    status: "Low stock",
-    supplier: "Precision Parts",
-    lastUpdated: "2026-05-21T10:30:00.000Z",
-  },
-  {
-    id: 3,
-    name: "POS Terminal",
-    category: "Electronics",
-    quantity: 0,
-    reorderPoint: 2,
-    unitCost: 190,
-    unitPrice: 280,
-    status: "Out of stock",
-    supplier: "Apex Devices",
-    lastUpdated: "2026-05-22T11:45:00.000Z",
-  },
-  {
-    id: 4,
-    name: "Thermal Paper",
-    category: "Supplies",
-    quantity: 42,
-    reorderPoint: 12,
-    unitCost: 4,
-    unitPrice: 8,
-    status: "In stock",
-    supplier: "Office Hub",
-    lastUpdated: "2026-05-23T13:20:00.000Z",
-  },
-];
 
 const initialSales: PosSaleRecord[] = [
   {
@@ -94,23 +45,23 @@ const initialSales: PosSaleRecord[] = [
   },
 ];
 
-const loadInventoryItems = () => {
+const loadInitialInventoryItems = () => {
   if (typeof window === "undefined") {
-    return initialItems;
+    return [] as InventoryItem[];
   }
 
   try {
     const storedItems = window.localStorage.getItem(INVENTORY_STORAGE_KEY);
 
     if (!storedItems) {
-      return initialItems;
+      return [] as InventoryItem[];
     }
 
     const parsedItems = JSON.parse(storedItems);
 
-    return Array.isArray(parsedItems) ? parsedItems : initialItems;
+    return Array.isArray(parsedItems) ? parsedItems : [];
   } catch {
-    return initialItems;
+    return [] as InventoryItem[];
   }
 };
 
@@ -148,7 +99,7 @@ const DashboardMainPage = () => {
     closeToastMessage,
   } = useToastMessage("", false, false);
 
-  const [items, setItems] = useState<InventoryItem[]>(() => loadInventoryItems());
+  const [items, setItems] = useState<InventoryItem[]>(() => loadInitialInventoryItems());
   const [sales] = useState<PosSaleRecord[]>(() => loadSales());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -160,6 +111,31 @@ const DashboardMainPage = () => {
 
   useEffect(() => {
     document.title = "Inventory Dashboard";
+  }, []);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const serverItems = await InventoryService.loadItems();
+        setItems(serverItems);
+      } catch {
+        if (typeof window !== "undefined") {
+          const storedItems = window.localStorage.getItem(INVENTORY_STORAGE_KEY);
+          if (storedItems) {
+            try {
+              const parsedItems = JSON.parse(storedItems);
+              if (Array.isArray(parsedItems)) {
+                setItems(parsedItems);
+              }
+            } catch {
+              setItems([]);
+            }
+          }
+        }
+      }
+    };
+
+    void loadItems();
   }, []);
 
   useEffect(() => {
@@ -255,8 +231,37 @@ const DashboardMainPage = () => {
       unitCost: String(item.unitCost),
       unitPrice: String(item.unitPrice),
       supplier: item.supplier,
+      image: item.image ?? "",
     });
     setIsFormOpen(true);
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+
+      setFormValues((current) => ({
+        ...current,
+        image: result,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setFormValues((current) => ({
+      ...current,
+      image: "",
+    }));
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -267,7 +272,7 @@ const DashboardMainPage = () => {
     }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const quantity = Number(formValues.quantity);
@@ -288,46 +293,56 @@ const DashboardMainPage = () => {
       return;
     }
 
-    const status: InventoryItem["status"] =
-      quantity === 0 ? "Out of stock" : quantity <= reorderPoint ? "Low stock" : "In stock";
-
-    const nextItem = {
-      id: editingItemId ?? Date.now(),
+    const payload = {
       name: formValues.name.trim(),
       category: formValues.category.trim(),
       quantity,
-      reorderPoint,
-      unitCost,
-      unitPrice,
-      status,
+      reorder_point: reorderPoint,
+      unit_cost: unitCost,
+      unit_price: unitPrice,
       supplier: formValues.supplier.trim(),
-      lastUpdated: new Date().toISOString(),
+      image: formValues.image || null,
     };
 
-    setItems((current) => {
-      if (editingItemId) {
-        return current.map((item) => (item.id === editingItemId ? nextItem : item));
-      }
+    try {
+      const savedItem = editingItemId
+        ? await InventoryService.updateItem(editingItemId, payload)
+        : await InventoryService.createItem(payload);
 
-      return [nextItem, ...current];
-    });
+      setItems((current) => {
+        if (editingItemId) {
+          return current.map((item) => (item.id === editingItemId ? savedItem : item));
+        }
 
-    showToastMessage(
-      editingItemId ? `Updated ${nextItem.name} successfully.` : `Added ${nextItem.name} successfully.`,
-      false,
-    );
-    resetForm();
+        return [savedItem, ...current];
+      });
+
+      showToastMessage(
+        editingItemId ? `Updated ${savedItem.name} successfully.` : `Added ${savedItem.name} successfully.`,
+        false,
+      );
+      resetForm();
+    } catch (error) {
+      console.error("Failed to save inventory item", error);
+      showToastMessage("Could not save the item to the database. Please try again.", true);
+    }
   };
 
-  const handleDelete = (item: InventoryItem) => {
+  const handleDelete = async (item: InventoryItem) => {
     const confirmed = window.confirm(`Delete ${item.name}? This action cannot be undone.`);
 
     if (!confirmed) {
       return;
     }
 
-    setItems((current) => current.filter((entry) => entry.id !== item.id));
-    showToastMessage(`${item.name} deleted successfully.`, false);
+    try {
+      await InventoryService.deleteItem(item.id);
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      showToastMessage(`${item.name} deleted successfully.`, false);
+    } catch (error) {
+      console.error("Failed to delete inventory item", error);
+      showToastMessage("Could not delete the item from the database. Please try again.", true);
+    }
   };
 
   const handleGenerateReport = () => {
@@ -448,6 +463,36 @@ const DashboardMainPage = () => {
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </label>
+
+              <div className="text-sm font-medium text-gray-700 md:col-span-2">
+                <p className="mb-1">Item image</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+                {formValues.image ? (
+                  <div className="mt-3 space-y-2">
+                    <img
+                      src={formValues.image}
+                      alt={formValues.name || "Item preview"}
+                      className="h-32 w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-sm font-semibold text-rose-600"
+                    >
+                      Remove image
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    No image selected yet. You can add one while creating or editing an item.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -576,8 +621,23 @@ const DashboardMainPage = () => {
                   {filteredItems.map((item) => (
                     <tr key={item.id} className="align-top">
                       <td className="px-3 py-3">
-                        <div className="font-semibold text-gray-900">{item.name}</div>
-                        <div className="text-xs text-gray-500">{item.supplier}</div>
+                        <div className="flex items-center gap-3">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="h-10 w-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">
+                              IMG
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-semibold text-gray-900">{item.name}</div>
+                            <div className="text-xs text-gray-500">{item.supplier}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-3 py-3">{item.category}</td>
                       <td className="px-3 py-3">{item.quantity}</td>
