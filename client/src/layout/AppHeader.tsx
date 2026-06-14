@@ -92,8 +92,13 @@ const AppHeader = () => {
                                         aria-expanded="false"
                                         data-dropdown-toggle="dropdown-user">
                                         <span className="sr-only">Open user menu</span>
-                                        <img className="w-8 h-8 rounded-full" src="https://flowbite.com/docs/images/people/profile-picture-5.jpg"
-                                            alt="user photo" />
+                                        {user?.profile_picture ? (
+                                            <img className="w-8 h-8 rounded-full object-cover" src={user.profile_picture} alt={handleUserFullNameFormat()} />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
+                                                {user ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}` : "U"}
+                                            </div>
+                                        )}
                                     </button>
                                 </div>
                                 <div className={`

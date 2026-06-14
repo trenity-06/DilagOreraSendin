@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "
 import type { InventoryItem } from "../../interfaces/InventoryInterface";
 import type { PosSaleApiResponse } from "../../interfaces/PosInterface";
 
-import InventoryService from "../../services/InventoryService";
-
 const INVENTORY_STORAGE_KEY = "inventory-items";
 
 // Use the same localStorage key as Dashboard/Inventory so POS has inventory to sell.
@@ -30,7 +28,6 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 });
 
 const POSMainPage = () => {
-  const [customerName, setCustomerName] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<number>(initialInventory[0]?.id ?? 0);
   const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState<{ itemId: number; name: string; quantity: number; unitPrice: number }[]>([]);
@@ -47,7 +44,7 @@ const POSMainPage = () => {
     setIsLoadingSales(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://127.0.0.1:8000/api/pos/sales?limit=20", {
+      const res = await fetch("http://127.0.0.1:8000/api/pos/sales?limit=50", {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -144,7 +141,6 @@ const POSMainPage = () => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          customer_name: customerName || null,
           line_items: cart.map((entry) => ({
             item_id: entry.itemId,
             quantity: entry.quantity,
@@ -166,7 +162,6 @@ const POSMainPage = () => {
     }
 
     setCart([]);
-    setCustomerName("");
   };
 
   const handleItemChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -247,16 +242,6 @@ const POSMainPage = () => {
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Checkout</h2>
           <form onSubmit={handleCheckout} className="mt-4 space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Customer name</label>
-              <input
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-                placeholder="Walk-in customer"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
-              />
-            </div>
-
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead>
@@ -264,6 +249,7 @@ const POSMainPage = () => {
                     <th className="px-3 py-2">Item</th>
                     <th className="px-3 py-2">Qty</th>
                     <th className="px-3 py-2">Price</th>
+                    <th className="px-3 py-2">Total</th>
                     <th className="px-3 py-2">Action</th>
                   </tr>
                 </thead>
@@ -281,6 +267,7 @@ const POSMainPage = () => {
                         />
                       </td>
                       <td className="px-3 py-3">{currencyFormatter.format(entry.unitPrice)}</td>
+                      <td className="px-3 py-3 font-semibold">{currencyFormatter.format(entry.unitPrice * entry.quantity)}</td>
                       <td className="px-3 py-3">
                         <button
                           type="button"
@@ -298,8 +285,8 @@ const POSMainPage = () => {
 
             <div className="rounded-xl bg-slate-50 px-4 py-3">
               <div className="flex items-center justify-between text-sm text-slate-600">
-                <span>Subtotal</span>
-                <span>{currencyFormatter.format(cartTotal)}</span>
+                <span className="font-bold">Total</span>
+                <span className="font-bold">{currencyFormatter.format(cartTotal)}</span>
               </div>
             </div>
 
@@ -322,43 +309,49 @@ const POSMainPage = () => {
           {isLoadingSales ? <div className="text-sm text-slate-500">Loading...</div> : null}
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="px-3 py-2">Customer</th>
-                <th className="px-3 py-2">Total</th>
-                <th className="px-3 py-2">Items</th>
-                <th className="px-3 py-2">Date</th>
+        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-base">
+            <thead className="bg-slate-50">
+              <tr className="text-left text-sm font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-8 py-4">Total</th>
+                <th className="px-8 py-4">Items</th>
+                <th className="px-8 py-4">Qty</th>
+                <th className="px-8 py-4">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {sales.map((sale) => (
-                <tr key={sale.sale_id} className="text-slate-700 align-top">
-                  <td className="px-3 py-3 font-semibold">{sale.customer_name || "Walk-in"}</td>
-                  <td className="px-3 py-3">
-                    <div>{currencyFormatter.format(sale.total_amount)}</div>
+                <tr key={sale.sale_id} className="text-slate-800 transition-colors hover:bg-slate-50">
+                  <td className="px-8 py-6 font-bold text-emerald-600 text-lg">
+                    {currencyFormatter.format(sale.total_amount)}
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="font-semibold">{sale.items_count ?? 0} items</div>
+                  <td className="px-8 py-6">
                     {sale.line_items?.length ? (
-                      <div className="mt-1 text-xs text-slate-600">
+                      <div className="text-sm text-slate-500">
                         {sale.line_items.map((li, idx) => (
-                          <div key={`${sale.sale_id}-${li.item_name}-${idx}`}>• {li.item_name} x{li.quantity}</div>
+                          <div key={`${sale.sale_id}-${li.item_name}-${idx}`}>{li.item_name}</div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="mt-1 text-xs text-slate-500">No items</div>
-                    )}
+                    ) : <span className="text-slate-400">No items</span>}
                   </td>
-                  <td className="px-3 py-3">{sale.sold_at ? new Date(sale.sold_at).toLocaleString() : ""}</td>
+                  <td className="px-8 py-6">
+                    {sale.line_items?.length ? (
+                      <div className="text-sm text-slate-500">
+                        {sale.line_items.map((li, idx) => (
+                          <div key={`${sale.sale_id}-${li.item_name}-${idx}`}>{li.quantity}</div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-8 py-6 text-slate-600 text-sm">
+                    {sale.sold_at ? new Date(sale.sold_at).toLocaleString() : ""}
+                  </td>
                 </tr>
               ))}
 
-
               {!isLoadingSales && sales.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
                     No sales yet.
                   </td>
                 </tr>

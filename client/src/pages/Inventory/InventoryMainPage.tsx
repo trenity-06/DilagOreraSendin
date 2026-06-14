@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import type { InventoryFormValues, InventoryItem } from "../../interfaces/InventoryInterface";
 import InventoryService from "../../services/InventoryService";
+import ToastMessage from "../../components/ToastMessage/ToastMessage";
+import { useToastMessage } from "../../hooks/useToastMessage";
 
 const INVENTORY_STORAGE_KEY = "inventory-items";
 
@@ -41,23 +43,9 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 2,
 });
 
-const getStatus = (
-  quantity: number,
-  reorderPoint: number
-): InventoryItem["status"] => {
-  if (quantity <= 0) {
-    return "Out of stock";
-  }
-
-  if (quantity <= reorderPoint) {
-    return "Low stock";
-  }
-
-  return "In stock";
-};
-
 const InventoryMainPage = () => {
   const [items, setItems] = useState<InventoryItem[]>(() => loadInitialItems());
+  const toast = useToastMessage("", false, false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -96,6 +84,10 @@ const InventoryMainPage = () => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
+    }
+    const lowStockItems = items.filter(item => item.status === "Low stock");
+    if (lowStockItems.length > 0) {
+      toast.showToastMessage(`Warning: ${lowStockItems.length} item(s) are low on stock!`, true);
     }
   }, [items]);
 
@@ -232,6 +224,10 @@ const InventoryMainPage = () => {
   };
 
   const handleDelete = async (itemId: number) => {
+    if (!window.confirm("Are you sure you want to delete this inventory item?")) {
+      return;
+    }
+
     try {
       await InventoryService.deleteItem(itemId);
       setItems((current) => current.filter((item) => item.id !== itemId));
@@ -290,8 +286,8 @@ const InventoryMainPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Inventory records</h2>
@@ -331,22 +327,22 @@ const InventoryMainPage = () => {
           </div>
 
           <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <table className="min-w-full divide-y divide-slate-200 text-xs">
               <thead>
                 <tr className="text-left text-slate-500">
-                  <th className="px-3 py-2">Item</th>
-                  <th className="px-3 py-2">Category</th>
-                  <th className="px-3 py-2">Qty</th>
-                  <th className="px-3 py-2">Reorder</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Supplier</th>
-                  <th className="px-3 py-2">Actions</th>
+                  <th className="px-2 py-1">Item</th>
+                  <th className="px-2 py-1">Category</th>
+                  <th className="px-2 py-1">Qty</th>
+                  <th className="px-2 py-1">Reorder</th>
+                  <th className="px-2 py-1">Status</th>
+                  <th className="px-2 py-1">Supplier</th>
+                  <th className="px-2 py-1">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredItems.map((item) => (
                   <tr key={item.id} className="text-slate-700">
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-1">
                       <div className="flex items-center gap-3">
                         {item.image ? (
                           <img
@@ -407,7 +403,7 @@ const InventoryMainPage = () => {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">
             {editingItemId ? "Edit inventory item" : "Add inventory item"}
           </h2>
@@ -564,6 +560,7 @@ const InventoryMainPage = () => {
           </form>
         </div>
       </div>
+      <ToastMessage {...toast} />
     </div>
   );
 };

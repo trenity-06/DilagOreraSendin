@@ -18,15 +18,6 @@ const AppSidebar = () => {
             path: '/pos',
             text: 'POS',
         },
-        {
-            path: '/genders',
-            text: '',
-
-        },
-        {
-            path: '/users',
-            text: '',
-        }
     ]
     return (
         <>

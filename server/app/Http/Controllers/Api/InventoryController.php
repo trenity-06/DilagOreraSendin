@@ -93,7 +93,7 @@ class InventoryController extends Controller
 
     public function destroy(InventoryItem $inventoryItem)
     {
-        $inventoryItem->delete();
+        $inventoryItem->update(['is_deleted' => true]);
 
         return response()->json([
             'message' => 'Inventory item deleted successfully.',

@@ -36,7 +36,7 @@ class UserController extends Controller
         $users = $users->paginate(15);
 
         $users->getCollection()->transform(function($user){
-            $user->profile_picture = $user->profile_picture ? url('storage/public/img/user/profile_picture/' .
+            $user->profile_picture = $user->profile_picture ? url('storage/img/user/profile_picture/' .
             $user->profile_picture) : null;
 
             return $user;
@@ -68,7 +68,7 @@ class UserController extends Controller
             $filename = pathinfo($filenameWithExtension, PATHINFO_FILENAME);
             $extension = $filenameWithExtension->getClientOriginalExtension();
             $filenameToStore = sha1($filename . '_' . time() . '.' . $extension);
-            $filenameWithExtension->storeAs('public/img/user/profile_picture', $filenameToStore);
+            $filenameWithExtension->storeAs('img/user/profile_picture', $filenameToStore, 'public');
             $validated['add_user_profile_picture'] = $filenameToStore;
         }
 
@@ -114,22 +114,21 @@ class UserController extends Controller
         ]);
 
         if($request->has('remove_profile_picture') && $request->remove_profile_picture == '1') {
-            if($user-> profile_picture && Storage::exists('public/img/user/profile_picture/' . $user->profile_picture)) {
+            if($user->profile_picture && Storage::disk('public')->exists('img/user/profile_picture/' . $user->profile_picture)) {
                Storage::disk('public')->delete('img/user/profile_picture/' . $user->profile_picture);
                 $user->profile_picture = null;
                 }
 
         } else if ($request->hasFile('edit_user_profile_picture')) {
-            if($user->profile_picture && Storage::exists('public/img/user/profile_picture/' . $user->profile_picture)) {
+            if($user->profile_picture && Storage::disk('public')->exists('img/user/profile_picture/' . $user->profile_picture)) {
                 Storage::disk('public')->delete('img/user/profile_picture/' . $user->profile_picture);
             }
             $filenameWithExtension = $request->file('edit_user_profile_picture');
             $filename = pathinfo($filenameWithExtension->getClientOriginalName(), PATHINFO_FILENAME);
             $extension = $filenameWithExtension->getClientOriginalExtension();
             $filenameToStore = sha1($filename . '_' . time() . '.' . $extension);
-            $filenameWithExtension->storeAs('public/img/user/profile_picture', $filenameToStore);
+            $filenameWithExtension->storeAs('img/user/profile_picture', $filenameToStore, 'public');
             $validated['edit_user_profile_picture'] = $filenameToStore;
-
         }
 
         $age = date_diff(date_create($validated['birth_date']), date_create('now'))->y;
@@ -146,7 +145,7 @@ class UserController extends Controller
             'username' => $validated['username'],
         ]);
 
-        $user->profile_picture = $user->profile_picture ? url('storage/public/img/user/profile_picture/' .
+        $user->profile_picture = $user->profile_picture ? url('storage/img/user/profile_picture/' .
         $user->profile_picture) : null;
 
         return response()->json([

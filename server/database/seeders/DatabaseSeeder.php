@@ -65,7 +65,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        User::factory(100)->create();
+        User::factory(10)->create();
 
     }
 }

@@ -105,13 +105,14 @@ class POSController extends Controller
         $saleIds = $sales->pluck('sale_id')->all();
 
         // Fetch OUT transactions and group them by sale.
-        // NOTE: your tbl_inventory_transactions schema does NOT include sale_id (DB error was raised).
-        // So we can only show item breakdown + items_count per sale if we can reliably map
-        // transactions to a sale_id.
-        //
-        // In the current DB, we don't have that mapping, so we return empty line items.
-        $lineItemsBySaleId = collect();
-
+        $lineItemsBySaleId = InventoryTransaction::query()
+            ->whereIn('sale_id', $saleIds)
+            ->join('tbl_inventory_items', 'tbl_inventory_transactions.item_id', '=', 'tbl_inventory_items.item_id')
+            ->get([
+                'tbl_inventory_transactions.*',
+                'tbl_inventory_items.name as item_name',
+            ])
+            ->groupBy('sale_id');
 
         return response()->json([
             'message' => 'POS sales fetched successfully.',

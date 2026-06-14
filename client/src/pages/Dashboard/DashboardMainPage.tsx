@@ -396,12 +396,19 @@ const DashboardMainPage = () => {
 
               <label className="text-sm font-medium text-gray-700">
                 Category
-                <input
+                <select
                   name="category"
                   value={formValues.category}
                   onChange={handleInputChange}
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-                />
+                >
+                  <option value="Electronics">Electronics</option>
+                  <option value="Hardware">Hardware</option>
+                  <option value="Essentials">Essentials</option>
+                  <option value="Snacks">Snacks</option>
+                  <option value="Beverages">Beverages</option>
+                  <option value="Frozen Foods">Frozen Foods</option>
+                </select>
               </label>
 
               <label className="text-sm font-medium text-gray-700">
@@ -566,7 +573,7 @@ const DashboardMainPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -612,7 +619,7 @@ const DashboardMainPage = () => {
                     <th className="px-3 py-2">Item</th>
                     <th className="px-3 py-2">Category</th>
                     <th className="px-3 py-2">Stock</th>
-                    <th className="px-3 py-2">Status</th>
+                    <th className="px-6 py-2">Status</th>
                     <th className="px-3 py-2">Value</th>
                     <th className="px-3 py-2">Actions</th>
                   </tr>
