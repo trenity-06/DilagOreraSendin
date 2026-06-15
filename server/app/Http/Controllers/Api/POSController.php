@@ -37,44 +37,56 @@ class POSController extends Controller
 
         $sale = null;
 
-        DB::transaction(function () use (&$sale, $user, $customerName, $totalAmount, $lineItems) {
-            $sale = Sale::create([
-                'created_by' => $user?->user_id ?? null,
-                'customer_name' => $customerName,
-                'total_amount' => $totalAmount,
-                'sold_at' => now(),
-                'is_deleted' => false,
-            ]);
-
-            foreach ($lineItems as $li) {
-                $item = InventoryItem::where('item_id', $li['item_id'])
-                    ->where('is_deleted', false)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$item) {
-                    throw new \RuntimeException('Inventory item not found: ' . $li['item_id']);
-                }
-
-                $qty = (int) $li['quantity'];
-                $item->current_stock = (int) $item->current_stock - $qty;
-                $item->save();
-
-                $unitPrice = (float) $li['unit_price'];
-                $totalPrice = $unitPrice * $qty;
-
-                InventoryTransaction::create([
-                    'item_id' => $item->item_id,
-                    'transaction_type' => 'OUT',
-                    'quantity' => $qty,
-                    'unit_price' => $unitPrice,
-                    'total_price' => $totalPrice,
-                    'sale_id' => $sale->sale_id,
-                    'reference' => 'POS',
+        try {
+            DB::transaction(function () use (&$sale, $user, $customerName, $totalAmount, $lineItems) {
+                $sale = Sale::create([
                     'created_by' => $user?->user_id ?? null,
+                    'customer_name' => $customerName,
+                    'total_amount' => $totalAmount,
+                    'sold_at' => now(),
+                    'is_deleted' => false,
                 ]);
-            }
-        });
+
+                foreach ($lineItems as $li) {
+                    $item = InventoryItem::where('item_id', $li['item_id'])
+                        ->where('is_deleted', false)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$item) {
+                        throw new \RuntimeException('Inventory item not found: ' . $li['item_id']);
+                    }
+
+                    $qty = (int) $li['quantity'];
+
+                    if ($item->current_stock < $qty) {
+                        throw new \RuntimeException("Insufficient stock for item: {$item->name}. Available: {$item->current_stock}, Requested: {$qty}");
+                    }
+
+                    $item->current_stock = (int) $item->current_stock - $qty;
+                    $item->save();
+
+                    $unitPrice = (float) $li['unit_price'];
+                    $totalPrice = $unitPrice * $qty;
+
+                    InventoryTransaction::create([
+                        'item_id' => $item->item_id,
+                        'transaction_type' => 'OUT',
+                        'quantity' => $qty,
+                        'unit_price' => $unitPrice,
+                        'total_price' => $totalPrice,
+                        'sale_id' => $sale->sale_id,
+                        'reference' => 'POS',
+                        'created_by' => $user?->user_id ?? null,
+                    ]);
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Checkout failed.',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
 
         return response()->json([
             'message' => 'Sale recorded successfully.',

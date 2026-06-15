@@ -85,9 +85,16 @@ const InventoryMainPage = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(items));
     }
-    const lowStockItems = items.filter(item => item.status === "Low stock");
-    if (lowStockItems.length > 0) {
-      toast.showToastMessage(`Warning: ${lowStockItems.length} item(s) are low on stock!`, true);
+
+    const outOfStockCount = items.filter(item => item.status === "Out of stock").length;
+    const lowStockCount = items.filter(item => item.status === "Low stock").length;
+
+    if (outOfStockCount > 0) {
+      toast.showError(`Critical: ${outOfStockCount} item(s) are out of stock!`);
+    }
+    
+    if (lowStockCount > 0) {
+      toast.showToastMessage(`Warning: ${lowStockCount} item(s) are low on stock!`, true);
     }
   }, [items]);
 
@@ -112,6 +119,7 @@ const InventoryMainPage = () => {
   const inventorySummary = useMemo(() => {
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const lowStockCount = items.filter((item) => item.status === "Low stock").length;
+    const outOfStockCount = items.filter((item) => item.status === "Out of stock").length;
     const totalValue = items.reduce(
       (sum, item) => sum + item.quantity * item.unitCost,
       0
@@ -120,6 +128,7 @@ const InventoryMainPage = () => {
     return {
       totalItems,
       lowStockCount,
+      outOfStockCount,
       totalValue,
     };
   }, [items]);
@@ -265,15 +274,52 @@ const InventoryMainPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {(inventorySummary.outOfStockCount > 0 || inventorySummary.lowStockCount > 0) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {inventorySummary.outOfStockCount > 0 && (
+            <div className="flex items-center gap-3 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-rose-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold">Out of Stock Warning</p>
+                <p className="text-sm">There are {inventorySummary.outOfStockCount} items with zero inventory.</p>
+              </div>
+            </div>
+          )}
+          {inventorySummary.lowStockCount > 0 && (
+            <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold">Low Stock Alert</p>
+                <p className="text-sm">There are {inventorySummary.lowStockCount} items below their reorder point.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Total items in stock</p>
+          <p className="text-sm text-slate-500">Total items</p>
           <p className="mt-2 text-2xl font-bold text-slate-900">
             {inventorySummary.totalItems}
           </p>
         </div>
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Low stock alerts</p>
+          <p className="text-sm text-slate-500 text-rose-600">Out of stock</p>
+          <p className="mt-2 text-2xl font-bold text-rose-600">
+            {inventorySummary.outOfStockCount}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm text-slate-500">Low stock</p>
           <p className="mt-2 text-2xl font-bold text-amber-600">
             {inventorySummary.lowStockCount}
           </p>
@@ -379,18 +425,18 @@ const InventoryMainPage = () => {
                     </td>
                     <td className="px-3 py-3">{item.supplier}</td>
                     <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleEdit(item)}
-                          className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white"
+                          className="rounded-md bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id)}
-                          className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                          className="rounded-md bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700"
                         >
                           Remove
                         </button>
@@ -560,7 +606,17 @@ const InventoryMainPage = () => {
           </form>
         </div>
       </div>
-      <ToastMessage {...toast} />
+      {toast.toasts.map((t, index) => (
+        <ToastMessage
+          key={t.id}
+          id={t.id}
+          message={t.message}
+          isFailed={t.isFailed}
+          isVisible={true}
+          onClose={toast.closeToastMessage}
+          index={index}
+        />
+      ))}
     </div>
   );
 };

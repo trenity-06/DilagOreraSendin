@@ -4,20 +4,24 @@ import AuthPageLayout from "./AuthPageLayout"
 import LoginForm from "./components/LoginForm"
 
 const LoginPage = () => {
-    const { message, isFailed, isVisible, showToastMessage, closeToastMessage } =
-        useToastMessage("", false, false)
+    const toast = useToastMessage()
 
     return (
         <>
-            <ToastMessage
-                message={message}
-                isFailed={isFailed}
-                isVisible={isVisible}
-                onClose={closeToastMessage}
-            />
+            {toast.toasts.map((t, index) => (
+                <ToastMessage
+                    key={t.id}
+                    id={t.id}
+                    message={t.message}
+                    isFailed={t.isFailed}
+                    isVisible={true}
+                    onClose={toast.closeToastMessage}
+                    index={index}
+                />
+            ))}
             <AuthPageLayout>
                 <LoginForm
-                    message={showToastMessage}
+                    message={toast.showToastMessage}
                 />
             </AuthPageLayout>
         </>

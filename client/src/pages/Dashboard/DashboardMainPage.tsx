@@ -92,12 +92,7 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 });
 
 const DashboardMainPage = () => {
-  const {
-    message: toastMessage,
-    isVisible: toastMessageIsVisible,
-    showToastMessage,
-    closeToastMessage,
-  } = useToastMessage("", false, false);
+  const toast = useToastMessage();
 
   const [items, setItems] = useState<InventoryItem[]>(() => loadInitialInventoryItems());
   const [sales] = useState<PosSaleRecord[]>(() => loadSales());
@@ -289,7 +284,7 @@ const DashboardMainPage = () => {
       Number.isNaN(unitCost) ||
       Number.isNaN(unitPrice)
     ) {
-      showToastMessage("Please complete all fields with valid values.", true);
+      toast.showError("Please complete all fields with valid values.");
       return;
     }
 
@@ -317,14 +312,11 @@ const DashboardMainPage = () => {
         return [savedItem, ...current];
       });
 
-      showToastMessage(
-        editingItemId ? `Updated ${savedItem.name} successfully.` : `Added ${savedItem.name} successfully.`,
-        false,
-      );
+      toast.showSuccess(editingItemId ? `Updated ${savedItem.name} successfully.` : `Added ${savedItem.name} successfully.`);
       resetForm();
     } catch (error) {
       console.error("Failed to save inventory item", error);
-      showToastMessage("Could not save the item to the database. Please try again.", true);
+      toast.showError("Could not save the item to the database. Please try again.");
     }
   };
 
@@ -338,10 +330,10 @@ const DashboardMainPage = () => {
     try {
       await InventoryService.deleteItem(item.id);
       setItems((current) => current.filter((entry) => entry.id !== item.id));
-      showToastMessage(`${item.name} deleted successfully.`, false);
+      toast.showSuccess(`${item.name} deleted successfully.`);
     } catch (error) {
       console.error("Failed to delete inventory item", error);
-      showToastMessage("Could not delete the item from the database. Please try again.", true);
+      toast.showError("Could not delete the item from the database. Please try again.");
     }
   };
 
@@ -360,16 +352,22 @@ const DashboardMainPage = () => {
     ].join("\n");
 
     setReportText(report);
-    showToastMessage("Report generated successfully.", false);
+    toast.showSuccess("Report generated successfully.");
   };
 
   return (
     <>
-      <ToastMessage
-        message={toastMessage}
-        isVisible={toastMessageIsVisible}
-        onClose={closeToastMessage}
-      />
+      {toast.toasts.map((t, index) => (
+        <ToastMessage
+          key={t.id}
+          id={t.id}
+          message={t.message}
+          isFailed={t.isFailed}
+          isVisible={true}
+          onClose={toast.closeToastMessage}
+          index={index}
+        />
+      ))}
 
       <Modal isOpen={isFormOpen} onClose={resetForm} className="max-w-2xl">
         <div className="space-y-4">

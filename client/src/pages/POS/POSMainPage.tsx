@@ -1,25 +1,9 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import type { InventoryItem } from "../../interfaces/InventoryInterface";
 import type { PosSaleApiResponse } from "../../interfaces/PosInterface";
-
-const INVENTORY_STORAGE_KEY = "inventory-items";
-
-// Use the same localStorage key as Dashboard/Inventory so POS has inventory to sell.
-const loadInitialInventory = (): InventoryItem[] => {
-  if (typeof window === "undefined") return [] as InventoryItem[];
-
-  try {
-    const storedItems = window.localStorage.getItem(INVENTORY_STORAGE_KEY);
-    if (!storedItems) return [] as InventoryItem[];
-
-    const parsed = JSON.parse(storedItems);
-    return Array.isArray(parsed) ? (parsed as InventoryItem[]) : ([] as InventoryItem[]);
-  } catch {
-    return [] as InventoryItem[];
-  }
-};
-
-const initialInventory: InventoryItem[] = loadInitialInventory();
+import { InventoryService } from "../../services/InventoryService";
+import { useToastMessage } from "../../hooks/useToastMessage";
+import ToastMessage from "../../components/ToastMessage/ToastMessage";
 
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -28,17 +12,45 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 });
 
 const POSMainPage = () => {
-  const [selectedItemId, setSelectedItemId] = useState<number>(initialInventory[0]?.id ?? 0);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<number>(0);
   const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState<{ itemId: number; name: string; quantity: number; unitPrice: number }[]>([]);
+
+  const toast = useToastMessage();
 
   // DB-driven sales
   const [sales, setSales] = useState<PosSaleApiResponse[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false);
 
   useEffect(() => {
     document.title = "POS";
+    fetchInventory();
+    fetchSalesFromDB();
   }, []);
+
+  const fetchInventory = async () => {
+    setIsLoadingInventory(true);
+    try {
+      const items = await InventoryService.loadItems();
+      setInventory(items);
+      if (items.length > 0 && selectedItemId === 0) {
+        // Find first item with stock if possible
+        const firstWithStock = items.find(i => i.quantity > 0);
+        if (firstWithStock) {
+          setSelectedItemId(firstWithStock.id);
+        } else {
+          setSelectedItemId(items[0].id);
+        }
+      }
+    } catch (e) {
+      console.error("fetchInventory error:", e);
+      toast.showError("Failed to load inventory.");
+    } finally {
+      setIsLoadingInventory(false);
+    }
+  };
 
   const fetchSalesFromDB = async () => {
     setIsLoadingSales(true);
@@ -59,7 +71,6 @@ const POSMainPage = () => {
 
       const json = await res.json();
       const data = json?.data;
-      // IMPORTANT: preserve existing sales in case of empty array during transition.
       setSales(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("fetchSalesFromDB error:", e);
@@ -69,14 +80,9 @@ const POSMainPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchSalesFromDB();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const activeItem = useMemo(() => {
-    return initialInventory.find((item) => item.id === selectedItemId) ?? initialInventory[0];
-  }, [selectedItemId]);
+    return inventory.find((item) => item.id === selectedItemId);
+  }, [inventory, selectedItemId]);
 
   const cartTotal = useMemo(() => {
     return cart.reduce((sum, entry) => sum + entry.quantity * entry.unitPrice, 0);
@@ -87,7 +93,24 @@ const POSMainPage = () => {
   }, [cart]);
 
   const handleAddToCart = () => {
-    if (!activeItem || quantity <= 0) return;
+    if (!activeItem) return;
+    if (quantity <= 0) {
+      toast.showError("Quantity must be at least 1.");
+      return;
+    }
+
+    if (activeItem.quantity <= 0) {
+      toast.showError("Item is out of stock.");
+      return;
+    }
+
+    const inCart = cart.find(entry => entry.itemId === activeItem.id);
+    const totalQtyRequested = (inCart?.quantity ?? 0) + quantity;
+
+    if (totalQtyRequested > activeItem.quantity) {
+      toast.showError(`Insufficient stock. Only ${activeItem.quantity} available.`);
+      return;
+    }
 
     setCart((current) => {
       const existing = current.find((entry) => entry.itemId === activeItem.id);
@@ -115,6 +138,12 @@ const POSMainPage = () => {
   const handleCartQuantityChange = (itemId: number, nextQuantity: number) => {
     if (nextQuantity <= 0) {
       handleRemoveFromCart(itemId);
+      return;
+    }
+
+    const itemInInventory = inventory.find(i => i.id === itemId);
+    if (itemInInventory && nextQuantity > itemInInventory.quantity) {
+      toast.showError(`Insufficient stock. Only ${itemInInventory.quantity} available.`);
       return;
     }
 
@@ -149,24 +178,29 @@ const POSMainPage = () => {
         }),
       });
 
+      const json = await res.json();
+
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Checkout failed: ${res.status} ${errText}`);
+        throw new Error(json.error || json.message || "Checkout failed");
       }
 
-      // Refresh sales from DB so the table reflects SQL data.
+      toast.showSuccess("Sale completed successfully.");
+      setCart([]);
+      await fetchInventory(); // Refresh inventory stock
       await fetchSalesFromDB();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      // Don’t modify sales UI locally; DB is source of truth.
+      toast.showError(e.message || "Checkout failed.");
     }
-
-    setCart([]);
   };
 
   const handleItemChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedItemId(Number(event.target.value));
   };
+
+  const itemsWithStock = useMemo(() => {
+    return inventory.filter(i => i.quantity > 0);
+  }, [inventory]);
 
   return (
     <div className="space-y-6">
@@ -195,20 +229,28 @@ const POSMainPage = () => {
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-lg font-semibold text-slate-900">Add to cart</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Add to cart</h2>
+            {isLoadingInventory && <span className="text-xs text-slate-400 animate-pulse">Updating...</span>}
+          </div>
           <div className="mt-4 space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Item</label>
               <select
                 value={selectedItemId}
                 onChange={handleItemChange}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400 disabled:bg-slate-50"
+                disabled={inventory.length === 0}
               >
-                {initialInventory.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} — {currencyFormatter.format(item.unitPrice)}
-                  </option>
-                ))}
+                {inventory.length === 0 ? (
+                  <option value={0}>No items available</option>
+                ) : (
+                  inventory.map((item) => (
+                    <option key={item.id} value={item.id} disabled={item.quantity <= 0}>
+                      {item.name} — {currencyFormatter.format(item.unitPrice)} {item.quantity <= 0 ? "(OUT OF STOCK)" : ""}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -217,22 +259,51 @@ const POSMainPage = () => {
               <input
                 type="number"
                 min="1"
+                max={activeItem?.quantity || 1}
                 value={quantity}
                 onChange={(event) => setQuantity(Number(event.target.value))}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                disabled={!activeItem || activeItem.quantity <= 0}
               />
             </div>
 
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              <p className="font-semibold text-slate-900">{activeItem?.name ?? ""}</p>
-              <p className="mt-1">Price: {currencyFormatter.format(activeItem?.unitPrice ?? 0)}</p>
-              <p className="mt-1">Available stock: {activeItem?.quantity ?? 0}</p>
-            </div>
+            {activeItem && activeItem.quantity <= 0 && (
+              <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span className="font-semibold">Warning: This item is currently out of stock and cannot be sold.</span>
+              </div>
+            )}
+
+            {activeItem && activeItem.quantity > 0 && activeItem.quantity <= activeItem.reorderPoint && (
+              <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="font-semibold">Low stock alert: Only {activeItem.quantity} units remaining.</span>
+              </div>
+            )}
+
+            {activeItem ? (
+              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900">{activeItem.name}</p>
+                <p className="mt-1">Price: {currencyFormatter.format(activeItem.unitPrice)}</p>
+                <p className={`mt-1 font-medium ${activeItem.quantity <= 0 ? 'text-rose-600' : activeItem.quantity <= activeItem.reorderPoint ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  Available stock: {activeItem.quantity}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-400 text-center italic">
+                Select an item to see details
+              </div>
+            )}
 
             <button
               type="button"
               onClick={handleAddToCart}
-              className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              disabled={!activeItem || activeItem.quantity <= 0}
+              className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors hover:bg-emerald-700"
             >
               Add to cart
             </button>
@@ -272,13 +343,20 @@ const POSMainPage = () => {
                         <button
                           type="button"
                           onClick={() => handleRemoveFromCart(entry.itemId)}
-                          className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white"
+                          className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-rose-700"
                         >
                           Remove
                         </button>
                       </td>
                     </tr>
                   ))}
+                  {cart.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-8 text-center text-slate-400 italic">
+                        Your cart is empty
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -292,7 +370,8 @@ const POSMainPage = () => {
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              disabled={cart.length === 0}
+              className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors hover:bg-slate-800"
             >
               Complete sale
             </button>
@@ -351,7 +430,7 @@ const POSMainPage = () => {
 
               {!isLoadingSales && sales.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
                     No sales yet.
                   </td>
                 </tr>
@@ -360,6 +439,18 @@ const POSMainPage = () => {
           </table>
         </div>
       </div>
+
+      {toast.toasts.map((t, index) => (
+        <ToastMessage
+          key={t.id}
+          id={t.id}
+          message={t.message}
+          isFailed={t.isFailed}
+          isVisible={true}
+          onClose={toast.closeToastMessage}
+          index={index}
+        />
+      ))}
     </div>
   );
 };
